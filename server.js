@@ -65,7 +65,7 @@ app.post('/api/logout', (req, res) => {
 // ==================== DATABASE ====================
 async function openDb() {
   return open({
-    filename: path.join(__dirname, 'woodybookie.db'),
+    filename: path.join(__dirname, 'ChickBetLog.db'),
     driver: sqlite3.Database
   });
 }
