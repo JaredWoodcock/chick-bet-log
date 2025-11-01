@@ -1,3 +1,4 @@
+/* ==================== CSS VARIABLES ==================== */
 :root {
   --bg: #0d1117;
   --card: #161b22;
@@ -10,7 +11,7 @@
   --button-hover: #00d18c;
 }
 
-/* ---------- Base ---------- */
+/* ==================== BASE STYLES ==================== */
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--bg);
@@ -36,7 +37,57 @@ h2 {
   text-align: center;
 }
 
-/* ---------- Section / Cards ---------- */
+/* ==================== PASSWORD PROTECTION ==================== */
+#password-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+#password-screen h1 {
+  margin-bottom: 30px;
+}
+
+#password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 300px;
+}
+
+#password-input {
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+#password-error {
+  color: var(--negative);
+  text-align: center;
+  min-height: 20px;
+}
+
+/* Hide main content until unlocked */
+#main-content {
+  display: none;
+}
+
+#main-content.unlocked {
+  display: block;
+}
+
+/* ==================== SECTIONS ==================== */
 .section {
   background: var(--card);
   border: 1px solid var(--border);
@@ -48,12 +99,12 @@ h2 {
   box-sizing: border-box;
 }
 
-/* allow tables to scroll on small screens */
+/* Allow tables to scroll horizontally on small screens */
 .table-wrapper {
   overflow-x: auto;
 }
 
-/* ---------- Tables ---------- */
+/* ==================== TABLES ==================== */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -72,14 +123,10 @@ th {
   font-weight: 600;
 }
 
+/* Sortable column headers */
 th.sortable {
   cursor: pointer;
   position: relative;
-}
-
-/* hover only on tbody rows (not headers) */
-table tbody tr:hover {
-  background-color: var(--hover-row);
 }
 
 th.sortable::after {
@@ -90,47 +137,59 @@ th.sortable::after {
   opacity: 0.6;
 }
 
-th.sortable.asc::after { content: '▲'; }
-th.sortable.desc::after { content: '▼'; }
+th.sortable.asc::after { 
+  content: '▲'; 
+}
 
+th.sortable.desc::after { 
+  content: '▼'; 
+}
+
+/* Hover effect only on table body rows (not headers) */
+table tbody tr:hover {
+  background-color: var(--hover-row);
+}
+
+/* Zebra striping for better readability */
 tr:nth-child(even) {
   background-color: rgba(255,255,255,0.02);
 }
 
-/* ---------- Balance styling ---------- */
-#balance.negative { color: var(--negative); }
-#balance-label.negative { color: var(--negative); }
+/* Nested table for parlay details */
+.nested {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 5px;
+  font-size: 0.85rem;
+}
 
-/* ---------- Buttons ---------- */
+.nested th, .nested td {
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ==================== CREDITS TABLE FIX ==================== */
+#credits-table th,
+#credits-table td {
+  padding: 10px 20px;
+}
+
+#credits-table th:first-child,
+#credits-table td:first-child {
+  text-align: left;
+  padding-left: 20px;
+  width: 40%;
+}
+
+#credits-table th:last-child,
+#credits-table td:last-child {
+  text-align: right;
+  padding-right: 20px;
+  width: 60%;
+}
+
+/* ==================== BUTTONS ==================== */
 button {
-  background-color: var(--button-bg);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: background 0.18s ease, transform 0.08s;
-}
-
-button:hover { background-color: var(--button-hover); }
-button:active { transform: translateY(1px); }
-
-/* ---------- Filters (All Bets) ---------- */
-.filters-wrapper {
-  position: relative;
-  margin-bottom: 15px;
-}
-
-/* header row: h2 left, button right */
-.filters-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-/* toggle button (All Bets) */
-#filter-toggle-btn {
   background-color: var(--button-bg);
   border: none;
   border-radius: 6px;
@@ -138,12 +197,35 @@ button:active { transform: translateY(1px); }
   padding: 8px 14px;
   cursor: pointer;
   font-weight: 600;
-  transition: background 0.18s ease;
+  transition: background 0.18s ease, transform 0.08s;
 }
-#filter-toggle-btn:hover { background-color: var(--button-hover); }
 
-/* dropdown panel (All Bets) - default visible controlled by JS via .hidden */
-#filter-dropdown {
+button:hover {
+  background-color: var(--button-hover);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+/* ==================== FILTERS ==================== */
+/* Header row with title and filter button */
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Wrapper for filters to position dropdown relative to it */
+.filters-wrapper {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+/* Filter dropdown panels - positioned absolutely */
+#filter-dropdown,
+#chart-filter-dropdown {
   position: absolute;
   right: 0;
   top: 115%;
@@ -160,18 +242,42 @@ button:active { transform: translateY(1px); }
   animation: dropdownFade 0.18s cubic-bezier(.2,.9,.4,1);
 }
 
-@keyframes dropdownFade {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Chart filter dropdown specific positioning */
+#chart-filter-dropdown {
+  min-width: 180px;
+  right: 20px;
+  top: 70px;
+  z-index: 40;
 }
 
-#filter-dropdown label {
+/* Dropdown fade-in animation */
+@keyframes dropdownFade {
+  from { 
+    opacity: 0; 
+    transform: translateY(-6px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Hide dropdown by default (toggled via JS) */
+.hidden {
+  display: none !important;
+}
+
+/* Filter labels inside dropdowns */
+#filter-dropdown label,
+#chart-filter-dropdown label {
   display: flex;
   flex-direction: column;
   font-size: 0.92rem;
   color: var(--text);
+  gap: 6px;
 }
 
+/* Filter action buttons (Apply/Clear/Reset) */
 .filter-actions {
   display: flex;
   gap: 8px;
@@ -179,10 +285,7 @@ button:active { transform: translateY(1px); }
   margin-top: 6px;
 }
 
-/* JS will toggle this class to hide/show dropdowns */
-.hidden { display: none !important; }
-
-/* ---------- Chart container & filters (Daily P/L) ---------- */
+/* ==================== CHART CONTAINER ==================== */
 #chart-container {
   max-width: 1000px;
   margin: 20px auto;
@@ -199,66 +302,22 @@ button:active { transform: translateY(1px); }
   box-sizing: border-box;
 }
 
-/* reuse .filters-header layout inside chart container */
+/* Chart header with title and filter button */
 #chart-container .filters-header {
   padding: 16px 20px 0 20px;
   margin: 0;
-  align-items: center;
-  justify-content: space-between;
 }
 
-/* Chart filter toggle (matches All Bets) */
-#chart-filter-toggle-btn {
-  background-color: var(--button-bg);
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  padding: 8px 14px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.18s ease;
-}
-#chart-filter-toggle-btn:hover { background-color: var(--button-hover); }
-
-/* Chart filter dropdown (same concept as All Bets) */
-#chart-filter-dropdown {
-  position: absolute;
-  right: 20px;
-  top: 70px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.45);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 180px;
-  max-width: 90%;
-  z-index: 40;
-  animation: dropdownFade 0.18s cubic-bezier(.2,.9,.4,1);
-}
-
-/* hide by default; JS toggles .hidden on it */
-#chart-filter-dropdown.hidden { display: none !important; }
-
-#chart-filter-dropdown label {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.92rem;
-  color: var(--text);
-}
-
-/* Chart wrapper holds the canvas and gives it breathing room */
+/* Chart canvas wrapper */
 .chart-wrapper {
   flex: 1;
-  min-height: 0; /* important for flex children */
+  min-height: 0;
   position: relative;
   padding: 10px;
   box-sizing: border-box;
 }
 
-/* canvas fills wrapper (Chart.js should be configured maintainAspectRatio: false) */
+/* Chart canvas fills wrapper (Chart.js configured with maintainAspectRatio: false) */
 #daily-pl-chart {
   width: 100% !important;
   height: 100% !important;
@@ -266,22 +325,9 @@ button:active { transform: translateY(1px); }
   box-sizing: border-box;
 }
 
-/* date inputs grouped */
-.date-filters {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.date-filters label {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* make date pickers match theme and have white calendar icons */
-input[type="date"] {
+/* ==================== FORM INPUTS ==================== */
+input[type="date"],
+select {
   background-color: var(--card);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -290,28 +336,12 @@ input[type="date"] {
   box-sizing: border-box;
 }
 
-/* white calendar icon */
+/* White calendar icon for dark theme */
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) hue-rotate(180deg);
 }
 
-/* also apply for Firefox (appearance tweak) */
-input[type="date"]::-moz-focus-inner {
-  filter: invert(1);
-}
-
-/* small helpers */
-label { margin-right: 10px; font-size: 0.95rem; }
-input[type="date"], select { border-radius: 6px; border: 1px solid var(--border); padding: 4px 6px; background-color: var(--card); color: var(--text); }
-
-/* nested table */
-.nested { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.85rem; }
-.nested th, .nested td { padding: 6px; border-bottom: 1px solid var(--border); }
-
-/* smaller action button row (used by dropdowns) */
-.bets-filter-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; }
-
-/* ---------- Footer ---------- */
+/* ==================== FOOTER ==================== */
 footer {
   text-align: center;
   margin-top: 30px;
@@ -319,19 +349,34 @@ footer {
   color: #999;
 }
 
-/* ---------- Responsive adjustments ---------- */
+/* ==================== RESPONSIVE ==================== */
 @media (max-width: 700px) {
-  table { font-size: 0.8rem; min-width: 600px; }
-  th, td { padding: 6px 8px; }
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.2rem; }
-  .section { padding: 15px; margin: 15px auto; }
+  table {
+    font-size: 0.8rem;
+    min-width: 600px;
+  }
 
-  /* Make dropdowns full-width stacked inside their section on mobile */
-  #filter-dropdown {
+  th, td {
+    padding: 6px 8px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  .section {
+    padding: 15px;
+    margin: 15px auto;
+  }
+
+  /* Make dropdowns full-width on mobile instead of absolute positioning */
+  #filter-dropdown,
+  #chart-filter-dropdown {
     position: static;
-    right: auto;
-    top: auto;
     width: 100%;
     min-width: 0;
     box-shadow: none;
@@ -340,27 +385,17 @@ footer {
     margin-top: 8px;
   }
 
-  #chart-filter-dropdown {
-    position: static;
-    right: auto;
-    top: auto;
-    width: 100%;
-    min-width: 150px;
-    box-shadow: none;
-    border-radius: 8px;
-    padding: 10px;
-    margin: 8px 0;
+  /* Reduce chart height on mobile */
+  #chart-container {
+    height: 420px;
   }
 
-  /* ensure .filters-header still lays out */
-  .filters-header { gap: 8px; align-items: center; }
+  .chart-wrapper {
+    padding: 8px;
+  }
 
-  /* stack chart controls */
-  .chart-wrapper { padding: 8px; }
-
-  .chart-filters, .bets-filter-buttons { flex-direction: column; align-items: stretch; }
-  .chart-filters button { width: 100%; }
-
-  /* reduce chart container height for small screens */
-  #chart-container { height: 420px; }
+  /* Credits table mobile fix */
+  #credits-table {
+    min-width: auto;
+  }
 }

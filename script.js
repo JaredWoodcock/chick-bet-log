@@ -1,12 +1,73 @@
+// ==================== PASSWORD PROTECTION ====================
+
+/**
+ * Check authentication status on page load
+ */
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/auth-status');
+    const data = await res.json();
+    
+    if (data.authenticated) {
+      // Already authenticated
+      document.getElementById('password-screen').style.display = 'none';
+      document.getElementById('main-content').classList.add('unlocked');
+      fetchData();
+    }
+  } catch (err) {
+    console.error('Auth check failed:', err);
+  }
+}
+
+/**
+ * Handle password form submission
+ */
+document.getElementById('password-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('password-input');
+  const error = document.getElementById('password-error');
+  
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: input.value })
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      // Correct password
+      document.getElementById('password-screen').style.display = 'none';
+      document.getElementById('main-content').classList.add('unlocked');
+      fetchData();
+    } else {
+      // Wrong password
+      error.textContent = 'Incorrect password';
+      input.value = '';
+      input.focus();
+    }
+  } catch (err) {
+    error.textContent = 'Connection error';
+    console.error('Login failed:', err);
+  }
+});
+
+// Check auth on page load
+checkAuth();
+
+// ==================== GLOBAL VARIABLES ====================
 let dailyPLChart;
 
-// ==================== UTILITIES ====================
+// ==================== UTILITY FUNCTIONS ====================
 
+/** Format a Date object as YYYY-MM-DD */
 function formatDate(date) {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+/** Convert various date formats to YYYY-MM-DD */
 function normalizeDateKey(s) {
   if (!s) return '';
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
@@ -16,6 +77,7 @@ function normalizeDateKey(s) {
   return isNaN(dt) ? '' : dt.toISOString().slice(0,10);
 }
 
+/** Format YYYY-MM-DD as MM/DD/YYYY for display */
 function formatDateDisplay(s) {
   if (!s) return '';
   const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
@@ -24,22 +86,28 @@ function formatDateDisplay(s) {
   return isNaN(dt) ? s : `${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getDate().toString().padStart(2,'0')}/${dt.getFullYear()}`;
 }
 
+/** Parse a currency/number string to float */
 function parseNum(val) {
   if (val == null || val === '') return 0;
   return parseFloat(String(val).replace(/\$|,/g,'')) || 0;
 }
 
+/** Format a number as currency */
 function formatCurrency(val) {
   return '$' + parseNum(val).toFixed(2);
 }
 
+/** Escape HTML special characters */
 function escapeHtml(s) {
   if (s == null) return '';
-  return String(s).replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
+  return String(s).replace(/[&<>"'`]/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'
+  }[c]));
 }
 
-// ==================== FETCH & RENDER ====================
+// ==================== DATA FETCHING ====================
 
+/** Fetch all bet data from API and render tables/charts */
 async function fetchData() {
   try {
     const [betsRes, singlesRes, parlaysRes, betTypesRes] = await Promise.all([
@@ -54,75 +122,18 @@ async function fetchData() {
     const parlaysData = await parlaysRes.json();
     const betTypesData = await betTypesRes.json();
 
-    // Store betsData globally
     window.betsData = betsData;
 
-    // Update current balance (all bets + credits)
-    updateBalance(window.betsData);
-
+    updateBalance(betsData);
     renderSimpleTable('#singles-table tbody', [singlesData]);
     renderSimpleTable('#parlays-table tbody', [parlaysData]);
     renderBetTypesTable(betTypesData);
     renderBetsTable(betsData);
     renderCreditsTable(betsData);
-
-    // Populate Type filter dynamically
-    const typeSet = new Set(betsData.map(b => (b.Type || '').toLowerCase()).filter(t => t && t !== 'credit'));
-    typeSet.add('singles');
-    const typeSelect = document.getElementById('type-filter');
-    typeSelect.innerHTML = '<option value="">All</option>';
-    [...typeSet].sort().forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t;
-      opt.textContent = t.charAt(0).toUpperCase() + t.slice(1);
-      typeSelect.appendChild(opt);
-    });
-
-    // All Bets Apply filter
-    document.getElementById('bets-filter-btn').addEventListener('click', () => {
-      const type = typeSelect.value.toLowerCase();
-      const result = document.getElementById('result-filter').value.toLowerCase();
-      const start = normalizeDateKey(document.getElementById('bets-start-date').value);
-      const end = normalizeDateKey(document.getElementById('bets-end-date').value);
-
-      const filtered = window.betsData.filter(b => {
-        const t = (b.Type || '').toLowerCase();
-        const r = (b.Result || '').toLowerCase();
-        const d = normalizeDateKey(b.Date);
-
-        let typeMatch = true;
-        if (type === 'singles') typeMatch = t !== 'parlay' && t !== 'credit';
-        else if (type) typeMatch = t === type;
-
-        const resultMatch = !result || r === result;
-        const startMatch = !start || (d && d >= start);
-        const endMatch = !end || (d && d <= end);
-
-        return typeMatch && resultMatch && startMatch && endMatch;
-      });
-
-      renderBetsTable(filtered);
-      document.getElementById('filter-dropdown').classList.add('hidden'); // close dropdown
-    });
-
-    // All Bets Clear filter
-    document.getElementById('bets-clear-btn').addEventListener('click', () => {
-      typeSelect.value = '';
-      document.getElementById('result-filter').value = '';
-      document.getElementById('bets-start-date').value = '';
-      document.getElementById('bets-end-date').value = '';
-      renderBetsTable(window.betsData);
-      document.getElementById('filter-dropdown').classList.add('hidden'); // close dropdown
-    });
-
-    // Setup Daily P/L chart default range: current month
-    const now = new Date();
-    const start = formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
-    const end = formatDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-    document.getElementById('start-date').value = start;
-    document.getElementById('end-date').value = end;
-
-    updateChart(betsData, normalizeDateKey(start), normalizeDateKey(end));
+    populateTypeFilter(betsData);
+    setupBetsFilters();
+    setupChartFilters();
+    initializeChart(betsData);
 
   } catch (err) {
     console.error('Error fetching data:', err);
@@ -130,8 +141,9 @@ async function fetchData() {
   }
 }
 
-// ==================== BALANCE ====================
+// ==================== BALANCE CALCULATION ====================
 
+/** Calculate and display current balance */
 function updateBalance(betsData) {
   const balance = betsData.reduce((sum, b) => sum + parseNum(b.Balance), 0);
   const balanceEl = document.getElementById('balance');
@@ -141,6 +153,7 @@ function updateBalance(betsData) {
 
 // ==================== TABLE RENDERING ====================
 
+/** Render a simple table (Singles/Parlays) */
 function renderSimpleTable(selector, rows) {
   const tbody = document.querySelector(selector);
   tbody.innerHTML = '';
@@ -155,6 +168,7 @@ function renderSimpleTable(selector, rows) {
   });
 }
 
+/** Render bet types table */
 function renderBetTypesTable(data) {
   const tbody = document.querySelector('#bettypes-table tbody');
   tbody.innerHTML = '';
@@ -169,6 +183,7 @@ function renderBetTypesTable(data) {
   });
 }
 
+/** Render all bets table with expandable parlays */
 function renderBetsTable(betsData) {
   const tbody = document.querySelector('#bets-table tbody');
   tbody.innerHTML = '';
@@ -195,7 +210,6 @@ function renderBetsTable(betsData) {
       let val = bet[key] ?? '';
       if (['Stake','To_Win','Balance'].includes(key)) {
         val = formatCurrency(val);
-        td.dataset.raw = parseNum(bet[key]);
       }
       td.textContent = val;
       tr.appendChild(td);
@@ -252,6 +266,7 @@ function renderBetsTable(betsData) {
   });
 }
 
+/** Render credits table (Description column removed) */
 function renderCreditsTable(betsData) {
   const tbody = document.querySelector('#credits-table tbody');
   tbody.innerHTML = '';
@@ -261,23 +276,149 @@ function renderCreditsTable(betsData) {
     .sort((a,b) => new Date(b.Date) - new Date(a.Date))
     .forEach(c => {
       const tr = document.createElement('tr');
-      const type = (c.Type || '').toLowerCase();
       tr.innerHTML = `
         <td>${c.Date}</td>
-        <td>${c.Bet || type.charAt(0).toUpperCase() + type.slice(1)}</td>
         <td>${formatCurrency(c.Balance)}</td>
       `;
       tbody.appendChild(tr);
     });
 }
 
+// ==================== FILTER SETUP ====================
+
+/** Populate type filter dropdown with unique bet types */
+function populateTypeFilter(betsData) {
+  const typeSet = new Set(
+    betsData
+      .map(b => (b.Type || '').toUpperCase())
+      .filter(t => t && t !== 'CREDIT')
+  );
+  typeSet.add('SINGLES');
+  
+  const typeSelect = document.getElementById('type-filter');
+  typeSelect.innerHTML = '<option value="">All</option>';
+  
+  [...typeSet].sort().forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    typeSelect.appendChild(opt);
+  });
+}
+
+/** Setup event listeners for All Bets filters */
+function setupBetsFilters() {
+  const filterToggleBtn = document.getElementById("filter-toggle-btn");
+  const filterDropdown = document.getElementById("filter-dropdown");
+  const typeSelect = document.getElementById('type-filter');
+
+  filterToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    filterDropdown.classList.toggle("hidden");
+  });
+
+  document.getElementById('bets-filter-btn').addEventListener('click', () => {
+    const type = typeSelect.value.toLowerCase();
+    const result = document.getElementById('result-filter').value.toLowerCase();
+    const start = normalizeDateKey(document.getElementById('bets-start-date').value);
+    const end = normalizeDateKey(document.getElementById('bets-end-date').value);
+
+    const filtered = window.betsData.filter(b => {
+      const t = (b.Type || '').toLowerCase();
+      const r = (b.Result || '').toLowerCase();
+      const d = normalizeDateKey(b.Date);
+
+      let typeMatch = true;
+      if (type === 'singles') typeMatch = t !== 'parlay' && t !== 'credit';
+      else if (type) typeMatch = t === type;
+
+      const resultMatch = !result || r === result;
+      const startMatch = !start || (d && d >= start);
+      const endMatch = !end || (d && d <= end);
+
+      return typeMatch && resultMatch && startMatch && endMatch;
+    });
+
+    renderBetsTable(filtered);
+    filterDropdown.classList.add('hidden');
+  });
+
+  document.getElementById('bets-clear-btn').addEventListener('click', () => {
+    typeSelect.value = '';
+    document.getElementById('result-filter').value = '';
+    document.getElementById('bets-start-date').value = '';
+    document.getElementById('bets-end-date').value = '';
+    renderBetsTable(window.betsData);
+    filterDropdown.classList.add('hidden');
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!filterDropdown.classList.contains("hidden") &&
+        !filterDropdown.contains(e.target) &&
+        !filterToggleBtn.contains(e.target)) {
+      filterDropdown.classList.add('hidden');
+    }
+  });
+}
+
+/** Setup event listeners for Daily P/L chart filters */
+function setupChartFilters() {
+  const chartFilterToggleBtn = document.getElementById("chart-filter-toggle-btn");
+  const chartFilterDropdown = document.getElementById("chart-filter-dropdown");
+  const startInput = document.getElementById("start-date");
+  const endInput = document.getElementById("end-date");
+
+  chartFilterToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    chartFilterDropdown.classList.toggle("hidden");
+  });
+
+  document.getElementById("pl-filter-apply-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const s = normalizeDateKey(startInput.value);
+    const eDate = normalizeDateKey(endInput.value);
+    updateChart(window.betsData, s, eDate);
+    chartFilterDropdown.classList.add("hidden");
+  });
+
+  document.getElementById("pl-filter-reset-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const now = new Date();
+    const start = formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const end = formatDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    startInput.value = start;
+    endInput.value = end;
+    updateChart(window.betsData, normalizeDateKey(start), normalizeDateKey(end));
+    chartFilterDropdown.classList.add("hidden");
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!chartFilterDropdown.contains(e.target) && !chartFilterToggleBtn.contains(e.target)) {
+      chartFilterDropdown.classList.add("hidden");
+    }
+  });
+}
+
 // ==================== CHART ====================
 
+/** Initialize chart with default date range (current month) */
+function initializeChart(betsData) {
+  const now = new Date();
+  const start = formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  const end = formatDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  document.getElementById('start-date').value = start;
+  document.getElementById('end-date').value = end;
+  updateChart(betsData, normalizeDateKey(start), normalizeDateKey(end));
+}
+
+/** Update chart with filtered date range */
 function updateChart(betsData, startDate, endDate) {
   const dailyTotals = {};
 
   betsData.forEach(bet => {
-    if ((bet.Type || '').toLowerCase() === 'credit') return;
+    const type = (bet.Type || '').toLowerCase();
+    if (type === 'credit' || type === 'deposit' || type === 'withdrawal') return;
+    
     const d = normalizeDateKey(bet.Date);
     if (!d || (startDate && d < startDate) || (endDate && d > endDate)) return;
 
@@ -309,6 +450,7 @@ function updateChart(betsData, startDate, endDate) {
   renderChart(labels, cumulative);
 }
 
+/** Render or update Chart.js instance */
 function renderChart(labels, data) {
   const canvas = document.getElementById('daily-pl-chart');
   if (!canvas) return;
@@ -337,75 +479,25 @@ function renderChart(labels, data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top:5,right:5,bottom:0,left:5 } },
+      layout: { padding: 0 },
       scales: {
-        x: { title:{display:true,text:'Date',padding:{top:5,bottom:0}}, ticks:{maxRotation:0,autoSkip:true,padding:5} },
-        y: { title:{display:true,text:'Balance ($)',padding:{left:0,right:5}}, beginAtZero:false, ticks:{padding:5} }
+        x: {
+          title: { display: true, text: 'Date' },
+          ticks: { maxRotation: 0, autoSkip: true }
+        },
+        y: {
+          title: { display: true, text: 'Balance ($)' },
+          beginAtZero: false
+        }
       },
       plugins: { legend: { display: false } }
     }
   });
 }
 
-// ==================== ALL BETS DROPDOWN ====================
-
-const filterToggleBtn = document.getElementById("filter-toggle-btn");
-const filterDropdown = document.getElementById("filter-dropdown");
-
-filterToggleBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  filterDropdown.classList.toggle("hidden");
-});
-
-document.addEventListener("click", (e) => {
-  if (!filterDropdown.classList.contains("hidden") &&
-      !filterDropdown.contains(e.target) &&
-      !filterToggleBtn.contains(e.target)) {
-    filterDropdown.classList.add("hidden");
-  }
-});
-
-// ==================== DAILY P/L FILTER DROPDOWN ====================
-
-const chartFilterToggleBtn = document.getElementById("chart-filter-toggle-btn");
-const chartFilterDropdown = document.getElementById("chart-filter-dropdown");
-const plApplyBtn = document.getElementById("pl-filter-apply-btn");
-const plResetBtn = document.getElementById("pl-filter-reset-btn");
-const startInput = document.getElementById("start-date");
-const endInput = document.getElementById("end-date");
-
-chartFilterToggleBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  chartFilterDropdown.classList.toggle("hidden");
-});
-
-plApplyBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  const s = normalizeDateKey(startInput.value);
-  const eDate = normalizeDateKey(endInput.value);
-  updateChart(window.betsData, s, eDate);
-  chartFilterDropdown.classList.add("hidden");
-});
-
-plResetBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  const now = new Date();
-  const start = formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
-  const end = formatDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-  startInput.value = start;
-  endInput.value = end;
-  updateChart(window.betsData, normalizeDateKey(start), normalizeDateKey(end));
-  chartFilterDropdown.classList.add("hidden");
-});
-
-document.addEventListener("click", (e) => {
-  if (!chartFilterDropdown.contains(e.target) && !chartFilterToggleBtn.contains(e.target)) {
-    chartFilterDropdown.classList.add("hidden");
-  }
-});
-
 // ==================== SORTING ====================
 
+/** Setup sortable column headers */
 document.querySelectorAll('#bets-table th.sortable').forEach(th => {
   th.addEventListener('click', () => {
     const tbody = document.querySelector('#bets-table tbody');
@@ -413,6 +505,7 @@ document.querySelectorAll('#bets-table th.sortable').forEach(th => {
     if (!key) return;
 
     const dir = th.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+    
     document.querySelectorAll('#bets-table th.sortable').forEach(h => {
       h.classList.remove('asc','desc');
       h.dataset.sortDir = '';
@@ -442,7 +535,3 @@ document.querySelectorAll('#bets-table th.sortable').forEach(th => {
     });
   });
 });
-
-// ==================== INIT ====================
-
-fetchData();

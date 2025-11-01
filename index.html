@@ -10,10 +10,29 @@
 </head>
 <body>
 
-<h1>Chick's Bet Log</h1>
+<!-- PASSWORD PROTECTION SCREEN -->
+<div id="password-screen">
+  <h1>🔒 Chick's Bet Log</h1>
+  <form id="password-form">
+    <input 
+      type="password" 
+      id="password-input" 
+      placeholder="Enter password" 
+      autocomplete="off"
+      required
+    />
+    <button type="submit">Unlock</button>
+    <div id="password-error"></div>
+  </form>
+</div>
 
+<!-- MAIN CONTENT (hidden until password correct) -->
+<div id="main-content">
+
+<h1>Chick's Bet Log</h1>
 <h2><span id="balance-label">Current Balance:</span> <span id="balance">Loading...</span></h2>
 
+<!-- SINGLES SECTION -->
 <div class="section">
   <h2>Singles</h2>
   <div class="table-wrapper">
@@ -33,6 +52,7 @@
   </div>
 </div>
 
+<!-- PARLAYS SECTION -->
 <div class="section">
   <h2>Parlays</h2>
   <div class="table-wrapper">
@@ -52,6 +72,7 @@
   </div>
 </div>
 
+<!-- BET TYPES SECTION -->
 <div class="section">
   <h2>Bet Types</h2>
   <div class="table-wrapper">
@@ -72,12 +93,14 @@
   </div>
 </div>
 
+<!-- DAILY P/L CHART SECTION -->
 <div id="chart-container" class="section">
   <div class="filters-header">
     <h2>Daily P/L</h2>
     <button id="chart-filter-toggle-btn">Change Date Range ▾</button>
   </div>
 
+  <!-- Chart filter dropdown -->
   <div id="chart-filter-dropdown" class="hidden">
     <label>
       Start Date:
@@ -87,7 +110,6 @@
       End Date:
       <input type="date" id="end-date">
     </label>
-
     <div class="filter-actions">
       <button id="pl-filter-apply-btn">Apply</button>
       <button id="pl-filter-reset-btn">Reset</button>
@@ -99,7 +121,7 @@
   </div>
 </div>
 
-
+<!-- ALL BETS SECTION -->
 <div class="section">
   <div class="filters-wrapper">
     <div class="filters-header">
@@ -107,6 +129,7 @@
       <button id="filter-toggle-btn">Filters ▾</button>
     </div>
 
+    <!-- Bets filter dropdown -->
     <div id="filter-dropdown" class="hidden">
       <label>
         Type:
@@ -114,7 +137,6 @@
           <option value="">All</option>
         </select>
       </label>
-
       <label>
         Result:
         <select id="result-filter">
@@ -123,10 +145,8 @@
           <option value="loss">Loss</option>
         </select>
       </label>
-
       <label>Start Date: <input type="date" id="bets-start-date"></label>
       <label>End Date: <input type="date" id="bets-end-date"></label>
-
       <div class="filter-actions">
         <button id="bets-filter-btn">Apply</button>
         <button id="bets-clear-btn">Clear</button>
@@ -154,6 +174,7 @@
   </div>
 </div>
 
+<!-- CREDITS SECTION -->
 <div class="section">
   <h2>Credits</h2>
   <div class="table-wrapper">
@@ -161,7 +182,6 @@
       <thead>
         <tr>
           <th>Date</th>
-          <th>Description</th>
           <th>Amount</th>
         </tr>
       </thead>
@@ -171,6 +191,8 @@
 </div>
 
 <footer>Chick's Bet Log &copy; 2025</footer>
+
+</div>
 
 <script src="script.js"></script>
 </body>

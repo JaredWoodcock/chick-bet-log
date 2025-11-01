@@ -3,6 +3,7 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import session from 'express-session';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,8 +11,58 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
-app.use(express.static(__dirname));
+// ==================== PASSWORD CONFIGURATION ====================
+// Change this to your desired password
+const CORRECT_PASSWORD = "Chick2025!";
 
+// ==================== MIDDLEWARE ====================
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Session middleware for authentication
+app.use(session({
+  secret: 'your-secret-key-change-this-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: false, // Set to true if using HTTPS
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// ==================== AUTHENTICATION MIDDLEWARE ====================
+function requireAuth(req, res, next) {
+  if (req.session.authenticated) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
+// ==================== PASSWORD ENDPOINT ====================
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+  
+  if (password === CORRECT_PASSWORD) {
+    req.session.authenticated = true;
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ success: false, error: 'Incorrect password' });
+  }
+});
+
+// Check authentication status
+app.get('/api/auth-status', (req, res) => {
+  res.json({ authenticated: !!req.session.authenticated });
+});
+
+// Logout endpoint
+app.post('/api/logout', (req, res) => {
+  req.session.destroy();
+  res.json({ success: true });
+});
+
+// ==================== DATABASE ====================
 async function openDb() {
   return open({
     filename: path.join(__dirname, 'woodybookie.db'),
@@ -19,8 +70,7 @@ async function openDb() {
   });
 }
 
-// ==================== UTILITIES ====================
-
+// ==================== UTILITY FUNCTIONS ====================
 function toDecimal(odds) {
   if (!odds) return 1;
   const o = odds.toString().trim();
@@ -37,15 +87,15 @@ function expectedPct(dec) {
   return dec > 0 ? (100 / dec).toFixed(2) + '%' : '0%';
 }
 
-// ==================== ENDPOINTS ====================
-
-app.get('/api/balance', async (req, res) => {
+// ==================== PROTECTED API ENDPOINTS ====================
+// All data endpoints require authentication
+app.get('/api/balance', requireAuth, async (req, res) => {
   const db = await openDb();
   const row = await db.get(`SELECT SUM(CAST(REPLACE(Balance,'$','') AS REAL)) AS total FROM bets`);
   res.json({ balance: row?.total != null ? '$' + parseFloat(row.total).toFixed(2) : '$0.00' });
 });
 
-app.get('/api/singles', async (req, res) => {
+app.get('/api/singles', requireAuth, async (req, res) => {
   const db = await openDb();
   const row = await db.get(`
     SELECT
@@ -78,7 +128,7 @@ app.get('/api/singles', async (req, res) => {
   ]);
 });
 
-app.get('/api/parlays', async (req, res) => {
+app.get('/api/parlays', requireAuth, async (req, res) => {
   const db = await openDb();
   const row = await db.get(`
     SELECT
@@ -111,7 +161,7 @@ app.get('/api/parlays', async (req, res) => {
   ]);
 });
 
-app.get('/api/parlay_bets', async (req, res) => {
+app.get('/api/parlay_bets', requireAuth, async (req, res) => {
   const { parlay_name } = req.query;
   if (!parlay_name) return res.json([]);
   const db = await openDb();
@@ -122,7 +172,7 @@ app.get('/api/parlay_bets', async (req, res) => {
   res.json(rows);
 });
 
-app.get('/api/bettypes', async (req, res) => {
+app.get('/api/bettypes', requireAuth, async (req, res) => {
   const db = await openDb();
   const singles = await db.all("SELECT Type, Odds, Result, Balance FROM bets WHERE LOWER(Type)!='parlay' AND LOWER(Result) IN ('win','loss')");
   const parlayBets = await db.all("SELECT type AS Type, odds AS Odds, result AS Result, 0 AS Balance FROM parlay_bets");
@@ -161,10 +211,15 @@ app.get('/api/bettypes', async (req, res) => {
   res.json(output);
 });
 
-app.get('/api/bets', async (req, res) => {
+app.get('/api/bets', requireAuth, async (req, res) => {
   const db = await openDb();
   const rows = await db.all("SELECT * FROM bets ORDER BY Date, id");
   res.json(rows);
 });
 
+// ==================== STATIC FILES ====================
+// Serve static files (HTML, CSS, JS) - no auth required for initial page load
+app.use(express.static(__dirname));
+
+// ==================== START SERVER ====================
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
